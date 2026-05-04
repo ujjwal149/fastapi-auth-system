@@ -1,5 +1,5 @@
 # from typing import Optional
-from fastapi import FastAPI,Response,HTTPException,status
+from fastapi import FastAPI,Response,HTTPException,status,Depends
 from dotenv import load_dotenv
 from fastapi.params import Body
 from pydantic import BaseModel
@@ -9,19 +9,28 @@ from psycopg.rows import dict_row
 import time
 import os
 
+from sqlalchemy.orm import Session
+from .database import engine,SessionLocal,get_db
+from . import models
 
+models.Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI()
 load_dotenv() 
-DB_HOST = os.getenv("DATABASE_HOST")
+
+DB_HOST = os.getenv("DB_HOST")
+
+
+print("MAIN FILE LOADED")
 class Post(BaseModel):
     title:str
     content:str
     published:bool = True
-#    rating: Optional[int] = None
 
-my_posts = [{"id":1,"title":"Summer","content":"July"},{"id":2,"title":"Winter","content":"December"}]
+
+
+
 
 
 #pgAdmin connection using psycopg..
@@ -29,14 +38,14 @@ retries = 5
 for i in range(retries):
     try:
         conn = psycopg.connect(
-            host = os.getenv("DATABASE_HOST"),
-            dbname = os.getenv("DATABASE_NAME"),
-            user = os.getenv("DATABASE_USER"),
-            password = os.getenv("DATABASE_PASSWORD"),
+            host = os.getenv("DB_HOST"),
+            dbname = os.getenv("DB_NAME"),
+            user = os.getenv("DB_USER"),
+            password = os.getenv("DB_PASSWORD"),
             row_factory=dict_row
         )
         cursor = conn.cursor()
-        print("Database connection is sucessfull!")
+
         break
     except Exception as error:
         print(f"Attempt {i+1} failed")
@@ -60,6 +69,11 @@ def find_index_post(id):
 @app.get("/")
 async def root():
     return {"message":"Hello World!"}
+
+@app.get("/sqlalchemy")
+def test_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Posts).all()
+    return {"data":posts}
 
 #GET
 @app.get("/posts")
