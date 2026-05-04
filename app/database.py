@@ -14,7 +14,6 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 
-print("DEBUG:", DB_HOST, DB_PORT, DB_NAME, DB_USER,DB_PASSWORD)
 # build connection URL
 SQLALCHEMY_DATABASE_URL = (
     f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
