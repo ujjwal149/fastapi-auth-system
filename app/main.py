@@ -8,10 +8,11 @@ import psycopg
 from psycopg.rows import dict_row
 import time
 import os
+from typing import List
 
 from sqlalchemy.orm import Session
 from .database import engine,SessionLocal,get_db
-from . import models
+from . import models,schemas
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -22,10 +23,7 @@ load_dotenv()
 DB_HOST = os.getenv("DB_HOST")
 
 
-class Post(BaseModel):
-    title:str
-    content:str
-    published:bool = True
+
 
 
 
@@ -62,14 +60,14 @@ async def root():
 
 
 #GET
-@app.get("/posts")
+@app.get("/posts",response_model=List[schemas.PostRes])
 def get_post(db:Session = Depends(get_db)):
     posts = db.query(models.Posts).all()
-    return {"data":posts}
+    return posts
 
-#POST
-@app.post("/posts")
-def create_post(post:Post,db:Session = Depends(get_db)):
+#Create new POST
+@app.post("/posts",response_model=schemas.PostRes)
+def create_post(post:schemas.Post,db:Session = Depends(get_db)):
     new_post = models.Posts(
         **post.dict()
         # title=post.title,content = post.content,published = post.published
@@ -77,17 +75,17 @@ def create_post(post:Post,db:Session = Depends(get_db)):
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
-    return {"data":new_post}
+    return new_post
 
 #GET one-post
-@app.get("/posts/{id}")
+@app.get("/posts/{id}",response_model=schemas.PostRes)
 def get_post(id:int,db:Session = Depends(get_db)):
     post = db.query(models.Posts).filter(models.Posts.id == id).first()
     print(post)
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"post with id:{id} was not found")
-    return {"post details":post} 
+    return post
  
 #DELETE 
 @app.delete("/posts/{id}",status_code=status.HTTP_204_NO_CONTENT)
@@ -104,8 +102,8 @@ def delete_post(id:int,db:Session = Depends(get_db)):
     
     
 #PUT --> update the post
-@app.put("/post/{id}")
-def update_post(id:int,post:Post,db:Session = Depends(get_db)):
+@app.put("/post/{id}",response_model=schemas.PostRes)
+def update_post(id:int,post:schemas.Post,db:Session = Depends(get_db)):
     post_query = db.query(models.Posts).filter(models.Posts.id == id)
     existing_post = post_query.first()
     
@@ -115,6 +113,6 @@ def update_post(id:int,post:Post,db:Session = Depends(get_db)):
     post_query.update(post.dict(),synchronize_session=False)
     db.commit()
     
-    return {"data":post_query.first()}
+    return post_query.first()
         
-        
+         
