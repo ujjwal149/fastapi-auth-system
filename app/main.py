@@ -1,4 +1,7 @@
 # from typing import Optional
+from enum import auto
+
+
 from fastapi import FastAPI,Response,HTTPException,status,Depends
 from dotenv import load_dotenv
 import psycopg
@@ -9,7 +12,11 @@ from typing import List
 
 from sqlalchemy.orm import Session
 from .database import engine,SessionLocal,get_db
-from . import models,schemas
+from . import models,schemas,utils
+
+
+
+
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -18,12 +25,6 @@ app = FastAPI()
 load_dotenv() 
 
 DB_HOST = os.getenv("DB_HOST")
-
-
-
-
-
-
 
 
 
@@ -116,6 +117,10 @@ def update_post(id:int,post:schemas.Post,db:Session = Depends(get_db)):
 @app.post("/users", status_code=status.HTTP_201_CREATED,response_model=schemas.UserOut)
 def created_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
+    #hash password
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
+    
     new_user = models.User(**user.model_dump())
 
     db.add(new_user)
@@ -123,3 +128,10 @@ def created_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     return new_user
+
+@app.get("/users/{id}",response_model=schemas.UserOut)
+def get_user(id:int,db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == id).first()
+    if not user:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,detail=f"User with id: {id} does not exist.")
+    return user 
